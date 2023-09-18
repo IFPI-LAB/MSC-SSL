@@ -1,0 +1,11 @@
+# Manifest syntax https://setuptools.pypa.io/en/latest/deprecated/distutils/commandref.html#sdist-cmd
+
+# FIXME: switching to a src/ layout would obviate the need for this file entirely.
+#        see https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#src-layout
+
+# Exclude build configs
+exclude *.yml
+exclude *.yaml
+
+prune .github
+prune example*

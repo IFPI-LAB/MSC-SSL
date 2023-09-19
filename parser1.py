@@ -5,8 +5,8 @@ from ssl_lib.utils import init_trial_path
 
 def default_parser():
     parser = argparse.ArgumentParser()
-    # 常改参数
-    parser.add_argument("--data_root", "-r", default=r"..\data\1-bottom --model_save_path output/1-bottom", type=str, help="/path/to/dataset")
+    # Common parameter
+    parser.add_argument("--data_root", "-r", default=r"..\data\1-bottom", type=str, help="/path/to/dataset")
     parser.add_argument('--labeled_folder', type=str, default=None)
     parser.add_argument('--model_save_path', type=str, default='output/1-bottom_msc_ssl')
     parser.add_argument("--num_labels", default=30, type=int, help="number of labeled data")

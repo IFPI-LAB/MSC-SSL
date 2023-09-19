@@ -1,6 +1,4 @@
 import argparse
-import random
-from ssl_lib.utils import init_trial_path
 
 
 def default_parser():

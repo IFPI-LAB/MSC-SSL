@@ -5,9 +5,9 @@ def default_parser():
     parser = argparse.ArgumentParser()
     # Common parameter
     parser.add_argument("--data_root", "-r", default=r"..\data\1-bottom", type=str, help="/path/to/dataset")
-    parser.add_argument('--labeled_folder', type=str, default=None)
+    parser.add_argument('--labeled_folder', type=str, default=None, help="folder name of labeled data")
     parser.add_argument('--model_save_path', type=str, default='output/1-bottom_msc_ssl')
-    parser.add_argument("--num_labels", default=30, type=int, help="number of labeled data")
+    parser.add_argument("--num_labels", default=30, type=int, help="number of labeled data")  # if labeled folder is not None, this parameter will not work
     parser.add_argument('--lambda_lmmd', type=float, default=1, help='data_mmd_loss_ratio')
     parser.add_argument('--lambda_level_l', type=float, default=0.5, help='data_level_loss_ratio')
     parser.add_argument('--lambda_level_u', type=float, default=0.1, help='data_level_loss_ratio')

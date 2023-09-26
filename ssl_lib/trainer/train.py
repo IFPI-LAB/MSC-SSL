@@ -1,4 +1,3 @@
-
 import os, numpy, random, time, math
 import torch
 import torch.nn.functional as F
@@ -8,7 +7,6 @@ from ssl_lib.param_scheduler import scheduler
 from ssl_lib.utils import Bar, AverageMeter
 from .supervised import supervised_train
 
-
 LABELED_FEAT_TABLES=None
 UNLABELED_FEAT_TABLES=None
 LABELED_INPUT_TABLES=None
@@ -16,11 +14,13 @@ UNLABELED_INPUT_TABLES=None
 LABELS_TABLES=None
 UNLABELED_LOG_TABLES=None
 
+
 def get_mask(logits,threshold, num_class=10):
     ent = -(logits.softmax(1) * logits.log_softmax(1)).sum(1)
     threshold = threshold * math.log(num_class)
     mask = ent.le(threshold).float()
     return mask
+
 
 def update_feat_table(cur_feat_l,cur_feat_u,cur_inputs_l,cur_inputs_u_w,cur_labels,cur_logits_u_w,feat_table_size_l=-1,feat_table_size_u=-1,mask_l=None, mask_u=None):
     global LABELED_FEAT_TABLES,UNLABELED_FEAT_TABLES,LABELED_INPUT_TABLES,UNLABELED_INPUT_TABLES,LABELS_TABLES,UNLABELED_LOG_TABLES
@@ -82,6 +82,7 @@ def update_feat_table(cur_feat_l,cur_feat_u,cur_inputs_l,cur_inputs_u_w,cur_labe
     
     return feat_l, feat_u, input_l, input_u, labels, logits_u
 
+
 def interleave_offsets(batch, nu):
     groups = [batch // (nu + 1)] * (nu + 1)
     for x in range(batch - sum(groups)):
@@ -127,7 +128,6 @@ def infer_interleave(forward_fn, inputs_train,cfg,bs):
             ret_list = interleave(ret_list, bs)
             feat_l = ret_list[0]
             feat_u_w, feat_u_s = torch.cat(ret_list[1:],dim=0).chunk(2)
-            #feat_l,feat_u_w, feat_u_s = ret_list
         else:
             feat_l = ret_list[0][:bs]
             feat_u_w, feat_u_s = ret_list[0][bs:].chunk(2)
@@ -178,7 +178,6 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
         logits_l,logits_u_w, logits_u_s,feat_l,feat_u_w,feat_u_s,feat_target,embedding_l, embedding_u_w, embedding_u_s = infer_interleave(forward_fn, inputs_train,cfg, bs)
         labels = labels.to(torch.int64)
         L_supervised = F.cross_entropy(logits_l, labels)
-        # L_supervised = loss_focal(logits_l, labels)
 
         L_level_l = torch.zeros_like(L_supervised)
         if cfg.lambda_level_l > 0:

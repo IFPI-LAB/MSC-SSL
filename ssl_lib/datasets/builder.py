@@ -8,6 +8,7 @@ from . import dataset_class
 from .sampler import RandomSampler, BatchSampler, ImbalancedDatasetSampler
 from ..augmentation.builder import gen_strong_augmentation, gen_weak_augmentation
 
+
 def _permutation(data, indics):
     new_data={}
     for k in ['images','labels']:
@@ -27,8 +28,6 @@ def __labeled_unlabeled_split(cfg, train_data, num_classes,):
 
     permutation = np.random.permutation(len(train_data["images"]))
     train_data = _permutation(train_data, permutation)
-    #train_data["images"] = train_data["images"][permutation]
-    #train_data["labels"] = train_data["labels"][permutation]
 
     l_train_data, ul_train_data = utils.dataset_split(train_data, cfg.num_labels, num_classes)
 
@@ -44,29 +43,11 @@ def gen_dataloader(root, dataset, cfg):
     root: str
         root directory
     dataset: str
-        dataset name, ['cifar10', 'cifar100', 'svhn', 'stl10']
+        dataset name, ['tobacco', ...]
     cfg: argparse.Namespace or something
     logger: logging.Logger
     """
-    if dataset == "cub200":
-        train_data, test_data = utils.get_cub200(root)
-        num_classes = 200
-        img_size = 224
-        mean = (0.485, 0.456, 0.406)
-        std = (0.229, 0.224, 0.225)
-    elif dataset == "indoor":
-        train_data, test_data = utils.get_indoor(root)
-        num_classes = 67
-        img_size = 224
-        mean = (0.485, 0.456, 0.406)
-        std = (0.229, 0.224, 0.225)
-    elif dataset == "cifar10":
-        train_data, test_data = utils.get_cifar10(root)
-        num_classes = 10
-        img_size = 32
-        mean = (0.481, 0.457, 0.408)
-        std = (0.260, 0.253, 0.268)
-    elif dataset == "tobacco":
+    if dataset == "tobacco":
         if cfg.labeled_folder is not None:
             train_data, test_data, labeled_data = utils.get_tobacco(root, cfg)
         else:
@@ -78,19 +59,17 @@ def gen_dataloader(root, dataset, cfg):
     else:
         raise NotImplementedError
 
-    # l_train_data, ul_train_data = __labeled_unlabeled_split(cfg, train_data, num_classes)
     if cfg.labeled_folder is not None:
         l_train_data = labeled_data
         ul_train_data = train_data
     else:
         l_train_data, ul_train_data = __labeled_unlabeled_split(cfg, train_data, num_classes)
 
-    # 统计每类标记样本的数量
+    # Counting the number of labeled samples in each category
     num_labeled = np.zeros((num_classes))
     for i in range(num_classes):
         num_labeled[i] = np.sum(l_train_data['labels']==i)
-    #ul_train_data["images"] = np.concatenate([ul_train_data["images"], l_train_data["images"]], 0)
-    #ul_train_data["labels"] = np.concatenate([ul_train_data["labels"], l_train_data["labels"]], 0)
+
     if cfg.num_unlabels>0:
         np.random.seed(cfg.seed)
         permutation = np.random.permutation(len(ul_train_data["images"]))
@@ -127,10 +106,6 @@ def gen_dataloader(root, dataset, cfg):
     test_transform = transforms.Compose(test_transform)
     test_data = dataset_class.LabeledDataset(test_data, test_transform)
 
-    # sampler_l = RandomSampler(labeled_train_data, replacement=True, num_samples=cfg.per_epoch_steps * cfg.l_batch_size)
-    # batch_sampler_l = BatchSampler(sampler_l, batch_size=cfg.l_batch_size, drop_last=True)
-    # l_train_loader = DataLoader(labeled_train_data, batch_sampler=batch_sampler_l, num_workers=cfg.num_workers, pin_memory=True)
-
     sampler_l = ImbalancedDatasetSampler(labeled_train_data,num_samples=cfg.per_epoch_steps * cfg.l_batch_size)
     batch_sampler_l = BatchSampler(sampler_l, batch_size=cfg.l_batch_size, drop_last=True)
     l_train_loader = DataLoader(labeled_train_data, batch_sampler=batch_sampler_l, num_workers=cfg.num_workers, pin_memory=True)
@@ -138,7 +113,6 @@ def gen_dataloader(root, dataset, cfg):
     sampler_u = RandomSampler(unlabeled_train_data, replacement=True, num_samples=cfg.per_epoch_steps * cfg.ul_batch_size)
     batch_sampler_u = BatchSampler(sampler_u, batch_size=cfg.ul_batch_size, drop_last=True)
     ul_train_loader = DataLoader(unlabeled_train_data, batch_sampler=batch_sampler_u, num_workers=cfg.num_workers, pin_memory=True)
-
 
     test_loader = DataLoader(
         test_data,

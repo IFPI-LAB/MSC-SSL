@@ -19,37 +19,6 @@ class InfiniteSampler(Sampler):
         return len(self.indices)
 
 
-
-def get_cub200(root):
-    train_root=os.path.join(root, 'CUB_200_2011','train')
-    test_root=os.path.join(root, 'CUB_200_2011','test')
-    train_data = LoadedImageFolder(train_root)
-    test_data = LoadedImageFolder(test_root)
-    train_data = {"images": train_data.data,"labels": train_data.targets}
-    test_data = {"images": test_data.data,
-                 "labels": test_data.targets}
-    return train_data, test_data
-
-def get_indoor(root):
-    train_root=os.path.join(root, 'indoorCVPR_09','train')
-    test_root=os.path.join(root, 'indoorCVPR_09','test')
-    train_data = LoadedImageFolder(train_root)
-    test_data = LoadedImageFolder(test_root)
-    train_data = {"images": train_data.data,"labels": train_data.targets}
-    test_data = {"images": test_data.data,
-                 "labels": test_data.targets}
-    return train_data, test_data
-
-def get_cifar10(root):
-    from torchvision.datasets import CIFAR10
-    train_data = CIFAR10(root, download=True)
-    test_data = CIFAR10(root, False)
-    train_data = {"images": train_data.data.astype(np.uint8),
-                  "labels": np.asarray(train_data.targets)}
-    test_data = {"images": test_data.data.astype(np.uint8), 
-                 "labels": np.asarray(test_data.targets)}
-    return train_data, test_data
-
 def get_tobacco(root, cfg):
     train_root=os.path.join(root, 'train')
     test_root=os.path.join(root, 'test')
@@ -67,6 +36,7 @@ def get_tobacco(root, cfg):
         return train_data, test_data, labeled_data
     return train_data, test_data
 
+
 def data_choice(data, indics):
     if isinstance(data,np.ndarray):
         new_data = data[indics]
@@ -76,6 +46,7 @@ def data_choice(data, indics):
             if flag:
                 new_data.append(data[index])
     return new_data
+
 
 def dataset_split(data, num_data, num_classes, random=False):
     """split dataset into two datasets
@@ -138,7 +109,6 @@ def dataset_split(data, num_data, num_classes, random=False):
                     dat2 += dataset2[k][c]
                 dataset1[k] = dat1
                 dataset2[k] = dat2
-            
 
     return dataset1, dataset2
 

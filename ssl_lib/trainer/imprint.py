@@ -33,8 +33,6 @@ def imprint(model,loader,num_class,num_labels, device):
     for i in range(num_class):
         tmp = output_stack[target_stack == i].mean(0)
         new_weight[i] = tmp / tmp.norm(p=2)
-    # new_weight_debug = new_weight.t()
-    # debug = np.dot(output_stack.cpu().numpy(), new_weight_debug.cpu().numpy())
     try:
         model.fc.weight.data = new_weight
     except:

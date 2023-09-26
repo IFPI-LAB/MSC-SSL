@@ -11,14 +11,15 @@ from ssl_lib.trainer.train import train, evaluate
 from ssl_lib.trainer.imprint import imprint
 from ssl_lib.consistency.focal_loss import focal_loss
 
+
 def get_file_quantity(folder: str) -> int:
-    '''BFS获取文件夹下文件的总数量'''
-    # 判断初始文件夹
-    assert os.path.isdir(folder), '请输入有效的文件夹参数'
-    file_quantity = 0                       # 初始化文件数量
+    '''Get the total number of files in the folder'''
+    # Determine the initial folder
+    assert os.path.isdir(folder), 'Please enter valid folder parameters'
+    file_quantity = 0
     folder_path_queue = queue.Queue()
-    folder_path_queue.put_nowait(folder)    # 初始化队列的值
-    # 处理队列里的文件夹
+    folder_path_queue.put_nowait(folder)
+    # Processing folder in the queue
     while not folder_path_queue.empty():
         folder = folder_path_queue.get_nowait()
         file_folder_list = list(map(lambda bar: os.path.join(folder, bar), os.listdir(folder)))
@@ -29,11 +30,13 @@ def get_file_quantity(folder: str) -> int:
         file_quantity += temp_file_count
     return file_quantity
 
+
 def main(cfg):
     # set seed
     random.seed(cfg.seed)
     numpy.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
+
     # select device
     if torch.cuda.is_available():
         device = "cuda"
@@ -43,6 +46,7 @@ def main(cfg):
     else:
         print("CUDA is NOT available")
         device = "cpu"
+
     # build data loader
     print("load dataset")
     lt_loader, ult_loader, test_loader, num_classes, img_size, num_labeled = gen_dataloader(cfg.data_root, cfg.dataset, cfg=cfg)
@@ -61,11 +65,6 @@ def main(cfg):
     print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters()) / 1000000.0))
     print(model)
 
-    # focal loss
-    alpha = numpy.sum(num_labeled) / num_labeled
-    alpha = alpha / numpy.sum(alpha)
-    # loss_focal = focal_loss(alpha=alpha.tolist(), gamma=2, num_classes=3)
-
     # build optimizer
     wd_params, non_wd_params = [], []
     for name, param in model.named_parameters():
@@ -77,14 +76,15 @@ def main(cfg):
         {'params': wd_params, 'weight_decay': cfg.weight_decay}, {'params': non_wd_params, 'weight_decay': 0}]
 
     optimizer = optim.SGD(param_list, lr=cfg.lr, momentum=cfg.momentum, weight_decay=0, nesterov=True)
+
     # set lr scheduler
     lr_scheduler = scheduler.CosineAnnealingLR(optimizer, cfg.iteration, num_cycles=cfg.num_cycles)
 
     # init meter
     start_epoch = 0
-    log_names = ['Epoch', 'Learning Rate', 'Train Loss', 'Loss CE', 'Loss LMMD', 'Loss Level L', 'Loss Level U', 'Labeled Acc',
-                 'Unlabeled Acc', 'Mask LMMD',
-                 'Test Loss', 'Test Acc.', 'Time']
+    log_names = ['Epoch', 'Learning Rate', 'Train Loss', 'Loss CE', 'Loss LMMD', 'Loss Level L', 'Loss Level U',
+                 'Labeled Acc', 'Unlabeled Acc', 'Mask LMMD', 'Test Loss', 'Test Acc.', 'Time']
+
     if cfg.resume:
         # Load checkpoint.
         print('==> Resuming from checkpoint..')
@@ -107,7 +107,6 @@ def main(cfg):
     for epoch in range(start_epoch, cfg.epochs):
         lr = optimizer.param_groups[0]['lr']
 
-        # print('\nEpoch: [%d | %d] LR: %f Epoch Time: %.3f min' % (epoch, cfg.epochs, lr, (time.time() - time_record) / 60), file=log)
         train_loader = zip(lt_loader, ult_loader)
         train_logs = train(epoch, train_loader, model, optimizer, lr_scheduler, cfg, device)
         dtime = time.time() - time_record

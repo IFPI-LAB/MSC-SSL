@@ -5,6 +5,7 @@ import numpy as np
 import os,sys
 import pickle
 
+
 class LoadedImageFolder(torchvision.datasets.ImageFolder):
 	def __init__(self, root, transform=None, target_transform=None):
 		super(LoadedImageFolder, self).__init__(root, transform=transform, target_transform=target_transform)
@@ -22,7 +23,6 @@ class LoadedImageFolder(torchvision.datasets.ImageFolder):
 			targets.append(target)
 		self.data = data
 		self.targets = np.array(targets)
-
 
 	def __getitem__(self, index):
 		"""
@@ -47,10 +47,8 @@ class LoadedImageFolder(torchvision.datasets.ImageFolder):
 	
 		return img, target
 
-
 	def __len__(self):
 		return len(self.data)
-
 
 
 class LabeledDataset:
@@ -87,8 +85,6 @@ class UnlabeledDataset:
         self.strong_augmentation = strong_augmentation
 
     def __getitem__(self, idx):
-        #image = torch.from_numpy(self.dataset["images"][idx]).float()
-        #image = image.permute(2, 0, 1).contiguous() / 255.
         image = self.dataset["images"][idx]
         label = self.dataset["labels"][idx]
         if isinstance(image, np.ndarray):

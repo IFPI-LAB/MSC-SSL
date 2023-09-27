@@ -9,10 +9,10 @@ cd MSC-SSL/
 ```
 
 We have tested our code in the following environment:
-- Python 3.8
-- Pytorch 1.9.0
-- Torchvision 0.10.0
-- CUDA 11.1
+- Python 3.7
+- Pytorch 1.10.1
+- Torchvision 0.10.1
+- CUDA 11.3
 
 ## Data Preparation
 The dataset is not publicly available, you may contact the corresponding author for research purposes to obtain the dataset.
@@ -35,7 +35,7 @@ You can organize your dataset into directories, as shown below:
 ## Running the model
 
 ### Baseline methods
-To run the main Python file, use the following command:
+Download the pretrained model [checkpoint](https://drive.google.com/file/d/1VClK73Dgu0RRKw9Cnhb0NjytGJLDAyLN/view?usp=sharing) and put it under `./ckpt`. Then, run the following command
 
 ```sh
 python main.py --data_root your/data/path --model_save_path your/save/path --labeled_folder your/labeled/data

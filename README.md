@@ -1,5 +1,8 @@
 # MSC-SSL
-This repository is the official code for the paper "Cost-effective identification of the field maturity of tobacco leaves based on deep semi-supervised learning and smartphone photograph".
+This repository is the official code for the paper "Cost-effective identification of the field maturity of tobacco leaves based on deep semi-supervised active learning and smartphone photograph".
+
+[[paper]](https://www.sciencedirect.com/science/article/pii/S0168169923007615?ref=pdf_download&fr=RR-2&rr=8253c1a8ea3767dd)
+
 
 ## Installation
 Clone this repo.

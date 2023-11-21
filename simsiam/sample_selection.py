@@ -1,6 +1,5 @@
 import argparse
 import os
-import random
 import numpy as np
 
 import matplotlib as mpl
@@ -8,17 +7,10 @@ import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 import scipy.spatial
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
+from sklearn.decomposition import PCA
 
-from tobacco_dataset import TBCdataset
-from model.builder import gen_model
 from SSKmeans import SemiKMeans
 
-import torch
-import torch.nn as nn
-import torch.nn.parallel
-import torch.backends.cudnn as cudnn
-import torch.utils.data
 import torchvision.models as models
 
 model_names = sorted(name for name in models.__dict__
@@ -35,15 +27,7 @@ parser.add_argument('--seed', default=1, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--num_classes', default=3, type=int, metavar='N',
                     help='number of classes')
-parser.add_argument('--model_path', default=r'ckpt\simsiam_top_256bs_200epoch\checkpoint_0199.pth.tar', type=str,
-                    help='path to simsiam pretrained checkpoint')
-parser.add_argument('--data_path', default=r'..\data\3-top', type=str,
-                    help='data path')
-parser.add_argument('--save_npz', default=r'top_simsiam_top_200e.npz', type=str,
-                    help='data path')
-parser.add_argument('--load_npz', default='top_simsiam_top_200e.npz', type=str,  # r'top_simsiam_top_200e.npz'
-                    help='data path')
-parser.add_argument('--save_csv', default=r'top_pick.csv', type=str,
+parser.add_argument('--load_npz', default='feature.npz', type=str,
                     help='data path')
 
 colors = ['navy', 'turquoise', 'darkorange']
@@ -52,75 +36,6 @@ colors = ['navy', 'turquoise', 'darkorange']
 def check_path(path):
     if not os.path.exists(path):
         os.makedirs(path)
-
-
-def get_embedding(args):
-    # select device
-    if torch.cuda.is_available():
-        device = "cuda"
-        torch.backends.cudnn.benchmark = True
-        torch.backends.cudnn.deterministic = True
-    else:
-        print("CUDA is NOT available")
-        device = "cpu"
-
-    # create model
-    # model = models.__dict__[args.arch](num_classes=args.num_classes)
-    model = gen_model(depth=50, num_classes=args.num_classes)
-
-    # rename simsiam pre-trained keys
-    checkpoint = torch.load(args.model_path)  # load simsiam model
-    state_dict = checkpoint['state_dict']
-    for k in list(state_dict.keys()):
-        # retain only encoder up to before the embedding layer
-        if k.startswith('module.encoder') and not k.startswith('module.encoder.fc'):
-            # remove prefix
-            state_dict[k[len("module.encoder."):]] = state_dict[k]
-        # delete renamed or unused k
-        del state_dict[k]
-    msg = model.load_state_dict(state_dict, strict=False)
-    assert set(msg.missing_keys) == {"fc.weight", "fc.bias"}
-
-    model = torch.nn.DataParallel(model).cuda()
-    model.eval()
-
-    # prepare data
-    tbc_dataset = TBCdataset(os.path.join(args.data_path, 'train'))
-    loader = torch.utils.data.DataLoader(tbc_dataset, batch_size=1, shuffle=False,
-                                         num_workers=0, pin_memory=True)
-
-    # infer
-    with torch.no_grad():
-        forward_fn = model.forward
-        embedding_all = None
-        label_all = None
-        im_path_all = []
-        for i, (images, targets, im_path) in enumerate(loader):
-            images = images.cuda()
-            target = targets.cuda()
-
-            out_lists_inter = forward_fn(images, return_fmap=True)
-
-            embedding = out_lists_inter[-2]
-            embedding = embedding.detach().cpu().numpy()
-
-            label = targets.cpu().numpy()
-
-            im_path_all.append(im_path)
-
-            try:
-                embedding_all = np.append(embedding_all, embedding, axis=0)
-            except:
-                embedding_all = embedding
-
-            try:
-                label_all = np.append(label_all, label, axis=0)
-            except:
-                label_all = label
-
-    np.savez(os.path.join('embed', args.save_npz), embedding_all=embedding_all, label_all=label_all,
-             im_path_all=im_path_all)
-    return embedding_all, label_all, im_path_all
 
 
 def make_ellipses(gmm, ax):
@@ -235,24 +150,20 @@ def plot_gmm(estimator, X_train, y_train, save_fig=None):
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    # get embedding
-    if args.load_npz is None:
-        embedding_all, label_all, im_path_all = get_embedding(args)
-    else:
-        # load embedding
-        data = np.load(os.path.join('embed', args.load_npz))
-        embedding_all = data['embedding_all']
-        label_all = data['label_all']
-        im_path_all = data['im_path_all'].tolist()
-        cos_similarity = data['cos_similarity']
+    # load embedding
+    data = np.load(os.path.join(args.load_npz))
+    embedding_all = data['embedding_all']
+    label_all = data['label_all']
+    im_path_all = data['im_path_all'].tolist()
+    cos_similarity = data['cos_similarity']
 
     X_train, y_train = embedding_all, label_all[:, 0]
 
-    # 数据标准化
-    scale = StandardScaler()  # 标准差标准化
+    # Data Normalization
+    scale = StandardScaler()  # Standard Deviation Normalization
     X_train = scale.fit_transform(X_train)
 
-    # 降维
+    # Dimensionality Reduction
     pca = PCA(n_components=2)
     X_train = pca.fit_transform(X_train)
 
@@ -270,7 +181,7 @@ if __name__ == "__main__":
             estimator.fit(X_train)  # Train the other parameters using the EM algorithm.
             plot_gmm(estimator, X_train, y_train, fig_path)
         else:
-            # 半监督GMM
+            # semi-GMM
             X_l = X_train[picked_label != -1]
             y_l = y_train[picked_label != -1]
             X_u = X_train
@@ -284,16 +195,16 @@ if __name__ == "__main__":
             estimator.fit(X_train)
             plot_gmm(estimator, X_train, y_train, fig_path)
 
-        # 预测标签
+        # Predict Labels
         y_train_pred = estimator.predict(X_train)
         train_accuracy, re_y_train_pred = tobacco_cluster_acc(y_train_pred, y_train)
         print('train acc:{:.6f}'.format(train_accuracy))
 
-        # 预测概率
+        # Predict Probability
         y_train_pred_prob = estimator.predict_proba(X_train)
         y_train_pred_prob_max = np.max(y_train_pred_prob, axis=1)
 
-        # 样本和中心的距离
+        # Distance of Sample to the Center
         centers = estimator.means_
         re_centers = np.zeros_like(centers)
         for i in range(args.num_classes):
@@ -304,8 +215,13 @@ if __name__ == "__main__":
         dists = np.choose(re_y_train_pred, dists_all.T)
         print('centers: {}, {}, {}'.format(re_centers[0], re_centers[1], re_centers[2]))
 
-        # 样本挑选：选距离中心最近的、预测概率最小的，两种情况每类选出至少一个样本为止
-        # 选距离中心近的
+        # Sample Selection:
+        # Select samples based on two strategies,
+        # 1. Choose Samples Close to the Center,
+        # 2. Choose Samples with the Lowest Probability.
+        # Both strategies should ensure that at least one sample from each category is selected.
+
+        # Selection Strategy 1: Choose Samples Close to the Center
         picked_num_iter = np.zeros((args.num_classes))
         cos_thre = 0.97
         for i in range(args.num_classes):
@@ -331,7 +247,7 @@ if __name__ == "__main__":
                 continue
         print("pick dist min: unripe={}, ripe={}, overripe={}".format(picked_num_iter[0], picked_num_iter[1], picked_num_iter[2]))
 
-        # 选概率最小的
+        # Selection Strategy 2: Choose Samples with the Lowest Probability
         picked_num_iter = np.zeros((args.num_classes))
         for i in range(args.num_classes):
             temp_num = 0
@@ -345,7 +261,6 @@ if __name__ == "__main__":
                     picked_num_kmeans[int(y_train[min_prob_idx])] += 1
                     picked_cos = cos_similarity[min_prob_idx, picked_label != -1]
                     if iter == 0 or np.max(picked_cos) < cos_thre:
-                    # if name not in picked_dick:
                         picked_dick[name] = 1
                         picked_label[min_prob_idx] = y_train[min_prob_idx]
                         picked_num[int(y_train[min_prob_idx])] += 1
@@ -366,21 +281,6 @@ if __name__ == "__main__":
         print('total picked num kmeans={}, unripe={}, ripe={}, overripe={}, rate={:.2f}%'.format(
             np.sum(picked_num_kmeans), picked_num_kmeans[0], picked_num_kmeans[1], picked_num_kmeans[2], np.sum(picked_num_kmeans) / y_train.shape[0] * 100
         ))
-
-        # 保存标记样本
-        # if (iter+1) % 10 == 0:
-        #     check_path(os.path.join(args.data_path, 'labeled', 'iter_{}'.format(iter), '1-unripe'))
-        #     check_path(os.path.join(args.data_path, 'labeled', 'iter_{}'.format(iter), '2-ripe'))
-        #     check_path(os.path.join(args.data_path, 'labeled', 'iter_{}'.format(iter), '3-overripe'))
-        #     position = ['1-unripe', '2-ripe', '3-overripe']
-        #     for i in range(args.num_classes):
-        #         valid_index = np.where(picked_label == i)[0]
-        #         for idx in valid_index:
-        #             temp = im_path_all[idx][0].split('\\')
-        #             src = os.path.join(args.data_path, temp[-3], temp[-2], temp[-1])
-        #             dst = os.path.join(args.data_path, 'labeled', 'iter_{}'.format(iter), position[i], temp[-1])
-        #             # print('src: {} -->> dst: {}'.format(src, dst))
-        #             shutil.copy(src, dst)
 
 
 

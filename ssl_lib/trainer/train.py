@@ -143,7 +143,7 @@ def infer_interleave(forward_fn, inputs_train,cfg,bs):
     return  logits_l,logits_u_w, logits_u_s,cur_feat_l,cur_feat_u,cur_feat_s,feat_target,embedding_l, embedding_u_w, embedding_u_s
 
 def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
-    if cfg.lambda_lmmd==0 and cfg.lambda_level_l==0 and cfg.lambda_level_u==0:
+    if cfg.lambda_lmmd==0 and cfg.lambda_msc_l==0 and cfg.lambda_msc_u==0:
         loss, acc = supervised_train(epoch,train_loader, model,optimizer,lr_scheduler, cfg,device)
         return (loss, loss, 0, 0, 0, acc, 0, 0)
     model.train()
@@ -154,8 +154,8 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
     labeled_acc = AverageMeter()
     unlabeled_acc = AverageMeter()
     losses_lmmd = AverageMeter()
-    losses_level_l = AverageMeter()
-    losses_level_u = AverageMeter()
+    losses_msc_l = AverageMeter()
+    losses_msc_u = AverageMeter()
     masks_lmmd = AverageMeter()
 
     lmmd_criterion = Distribution_Loss(loss='lmmd').to(device)
@@ -179,8 +179,8 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
         labels = labels.to(torch.int64)
         L_supervised = F.cross_entropy(logits_l, labels)
 
-        L_level_l = torch.zeros_like(L_supervised)
-        if cfg.lambda_level_l > 0:
+        L_msc_l = torch.zeros_like(L_supervised)
+        if cfg.lambda_msc_l > 0:
             embedding_l_unripe = torch.mean(embedding_l[labels == 0], dim=0).reshape(1, 2048)
             embedding_l_ripe = torch.mean(embedding_l[labels == 1], dim=0).reshape(1, 2048)
             embedding_l_overripe = torch.mean(embedding_l[labels == 2], dim=0).reshape(1, 2048)
@@ -192,13 +192,13 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
             if cos_overripe_ripe_l > cos_overripe_unripe_l and cos_ripe_unripe_l > cos_overripe_unripe_l:
                 pass
             else:
-                L_level_l = cos_overripe_unripe_l - cos_overripe_ripe_l
-                L_level_l += cos_overripe_unripe_l - cos_ripe_unripe_l
+                L_msc_l = cos_overripe_unripe_l - cos_overripe_ripe_l
+                L_msc_l += cos_overripe_unripe_l - cos_ripe_unripe_l
 
-        # unlabeled data level loss
+        # unlabeled data msc loss
         L_lmmd = torch.zeros_like(L_supervised)
         mmd_mask_u = torch.zeros_like(L_supervised)
-        L_level_u = torch.zeros_like(L_supervised)  # unlabeled data level loss
+        L_msc_u = torch.zeros_like(L_supervised)  # unlabeled data msc loss
         if cfg.lambda_lmmd>0:
             mmd_mask_l = get_mask(logits_l,cfg.lmmd_threshold,  num_class=cfg.num_classes)
             mmd_mask_u = get_mask(logits_u_w,cfg.lmmd_threshold,  num_class=cfg.num_classes)
@@ -208,8 +208,8 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
                 if cur_iteration>cfg.reg_warmup and len(cur_feat_l)>20 and len(cur_feat_l)==len(cur_feat_u) and cur_label.unique().shape[0] == cfg.num_classes and cur_logits_u.argmax(axis=1).unique().shape[0]==cfg.num_classes:
                     L_lmmd = lmmd_criterion(cur_feat_l, cur_feat_u, input_l=cur_input_l, input_u=cur_input_u, labels=cur_label, logits_u=cur_logits_u)
 
-                    # unlabeled data level loss
-                    if cfg.lambda_level_u > 0:
+                    # unlabeled data msc loss
+                    if cfg.lambda_msc_u > 0:
                         pseudo_label = logits_u_w.cpu().data.max(1)[1].numpy()
                         embedding_u_unripe = torch.mean(embedding_u_w[pseudo_label == 0], dim=0).reshape(1, 2048)
                         embedding_u_ripe = torch.mean(embedding_u_w[pseudo_label == 1], dim=0).reshape(1, 2048)
@@ -222,11 +222,11 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
                         if cos_overripe_ripe_u > cos_overripe_unripe_u and cos_ripe_unripe_u > cos_overripe_unripe_u:
                             pass
                         else:
-                            L_level_u = cos_overripe_unripe_u - cos_overripe_ripe_u
-                            L_level_u += cos_overripe_unripe_u - cos_ripe_unripe_u
+                            L_msc_u = cos_overripe_unripe_u - cos_overripe_ripe_u
+                            L_msc_u += cos_overripe_unripe_u - cos_ripe_unripe_u
 
         lambda_lmmd = scheduler.linear_warmup(cfg.lambda_lmmd, cfg.reg_warmup_iter, cur_iteration+1)
-        loss = L_supervised + lambda_lmmd * L_lmmd + cfg.lambda_level_l * L_level_l + cfg.lambda_level_u * L_level_u
+        loss = L_supervised + lambda_lmmd * L_lmmd + cfg.lambda_msc_l * L_msc_l + cfg.lambda_msc_u * L_msc_u
 
         # update parameters
         cur_lr = optimizer.param_groups[0]["lr"]
@@ -242,15 +242,15 @@ def train(epoch,train_loader , model,optimizer,lr_scheduler, cfg,device):
         losses.update(loss.item())
         losses_ce.update(L_supervised.item())
         losses_lmmd.update(L_lmmd.item())
-        losses_level_l.update(L_level_l.item())
-        losses_level_u.update(L_level_u.item())
+        losses_msc_l.update(L_msc_l.item())
+        losses_msc_u.update(L_msc_u.item())
         labeled_acc.update(acc_l.item())
         unlabeled_acc.update(acc_ul.item())
         batch_time.update(time.time() - end)
         masks_lmmd.update(mmd_mask_u.mean())
         end = time.time()
 
-    return (losses.avg, losses_ce.avg, losses_lmmd.avg, losses_level_l.avg, losses_level_u.avg, labeled_acc.avg, unlabeled_acc.avg, masks_lmmd.avg)
+    return (losses.avg, losses_ce.avg, losses_lmmd.avg, losses_msc_l.avg, losses_msc_u.avg, labeled_acc.avg, unlabeled_acc.avg, masks_lmmd.avg)
 
 
 def evaluate(eval_model, loader, device):

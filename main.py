@@ -84,7 +84,7 @@ def main(cfg):
 
     # init meter
     start_epoch = 0
-    log_names = ['Epoch', 'Learning Rate', 'Train Loss', 'Loss CE', 'Loss LMMD', 'Loss Level L', 'Loss Level U',
+    log_names = ['Epoch', 'Learning Rate', 'Train Loss', 'Loss CE', 'Loss LMMD', 'Loss MSC L', 'Loss MSC U',
                  'Labeled Acc', 'Unlabeled Acc', 'Mask LMMD', 'Test Loss', 'Test Acc.', 'Time']
 
     if cfg.resume:

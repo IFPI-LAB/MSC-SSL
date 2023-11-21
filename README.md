@@ -61,7 +61,11 @@ python feature_extract.py --model_path your/model/path --data_path your/data/pat
 ```
 
 ### Sample Selection
-
+After feature extraction, execute the following command for sample selection:
+```sh
+python sample_selection.py --load_npz your/feature/path
+```
+Select samples based on two strategies, one being the samples closest to the center, and the other being the samples with the lowest prediction probability. However, both strategies should ensure that at least one sample from each category is selected.
 
 ## Acknowledgement
 This code is partially based on [DeepDA](https://github.com/jindongwang/transferlearning/tree/master/code/DeepDA), [Semi-Supervised-Transfer-Learning](https://github.com/SHI-Labs/Semi-Supervised-Transfer-Learning).

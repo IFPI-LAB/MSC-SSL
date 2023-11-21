@@ -9,8 +9,8 @@ def default_parser():
     parser.add_argument('--model_save_path', type=str, default='output/1-bottom_msc_ssl')
     parser.add_argument("--num_labels", default=-1, type=int, help="number of labeled data")  # if labeled folder is not None, this parameter will not work
     parser.add_argument('--lambda_lmmd', type=float, default=1, help='weight parameters of lmmd loss')
-    parser.add_argument('--lambda_level_l', type=float, default=0.5, help='weight parameters of maturity structure constraint loss: labeled term')
-    parser.add_argument('--lambda_level_u', type=float, default=0.1, help='weight parameters of maturity structure constraint loss: unlabeled term')
+    parser.add_argument('--lambda_msc_l', type=float, default=0.5, help='weight parameters of maturity structure constraint loss: labeled term')
+    parser.add_argument('--lambda_msc_u', type=float, default=0.1, help='weight parameters of maturity structure constraint loss: unlabeled term')
 
     # dataset config
     parser.add_argument("--dataset", "-d", default="tobacco",  type=str, help="dataset name")

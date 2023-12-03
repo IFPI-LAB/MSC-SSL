@@ -29,6 +29,8 @@ parser.add_argument('--num_classes', default=3, type=int, metavar='N',
                     help='number of classes')
 parser.add_argument('--load_npz', default='feature.npz', type=str,
                     help='data path')
+parser.add_argument('--cos_thre', default=0.97, type=float,
+                    help='cos similarity threshold')
 
 colors = ['navy', 'turquoise', 'darkorange']
 
@@ -94,24 +96,22 @@ def relabel_gt_acc(ori_gt, cluster_label, new):
 
 def plot_gmm(estimator, X_train, y_train, save_fig=None):
     ###############################################################
-    ####  画图
+    ####  plot
     ###############################################################
     centers = estimator.means_
-    # 预测标签
+    # predict label
     y_train_pred = estimator.predict(X_train)
     train_accuracy, re_y_train_pred = tobacco_cluster_acc(y_train_pred, y_train)
     # print('train acc:{:.6f}'.format(train_accuracy))
 
-    ## 真实标签
-    fig = plt.figure(figsize=(15,4))
+    # plot gt label
     fig_1 = plt.subplot(1, 3, 1)
     scatter = plt.scatter(X_train[:, 0], X_train[:, 1], c=label_all, s=1, marker=".")
     legend1 = fig_1.legend(*scatter.legend_elements(), loc="upper right", title="Classes")
     fig_1.add_artist(legend1)
     plt.title("GT label")
-    # plt.show()
-    ## 预测标签
-    # plt.figure(2)
+
+    # plot predict label
     fig_2 = plt.subplot(1, 3, 2)
     make_ellipses(estimator, fig_2)
     plt.scatter(X_train[:, 0], X_train[:, 1], c=re_y_train_pred, s=1, marker=".")
@@ -119,8 +119,8 @@ def plot_gmm(estimator, X_train, y_train, save_fig=None):
     fig_2.add_artist(legend1)
     plt.scatter(centers[:, 0], centers[:, 1], c='r', s=30, marker="*")
     plt.title("Pred label")
-    # plt.show()
 
+    # plot GMM
     xlim = [np.min(X_train[:, 0]), np.max(X_train[:, 0])]
     ylim = [np.min(X_train[:, 1]), np.max(X_train[:, 1])]
     dinter = (np.maximum(xlim[1], ylim[1]) - np.minimum(xlim[0], ylim[0])) / 100.0
@@ -130,19 +130,14 @@ def plot_gmm(estimator, X_train, y_train, save_fig=None):
     XX = np.array([X.ravel(), Y.ravel()]).T
     Z = -estimator.score_samples(XX)
     Z = Z.reshape(X.shape)
-    # CS = plt.contour(
-    #     X, Y, Z, norm=LogNorm(vmin=1.0, vmax=1000.0), levels=np.logspace(0, 3, 10)
-    # )
-    # plt.figure(3)
-    fig_3 = plt.subplot(1, 3, 3)
+
     CS = plt.contour(X, Y, Z, 30, linewidths=1)
     CB = plt.colorbar(CS, shrink=0.8, extend="both")
     plt.scatter(X_train[:, 0], X_train[:, 1], c=re_y_train_pred, s=1, marker=".")
     plt.scatter(centers[:, 0], centers[:, 1], c='r', s=30, marker="*")
-
     plt.title("Negative log-likelihood predicted by a GMM")
     plt.axis("tight")
-    # plt.show()
+
     if save_fig is not None:
         plt.savefig(save_fig)
 
@@ -156,6 +151,11 @@ if __name__ == "__main__":
     label_all = data['label_all']
     im_path_all = data['im_path_all'].tolist()
     cos_similarity = data['cos_similarity']
+    debug = np.load(os.path.join('output/debug/bottom_simsiam_bottom_200e.npz'))
+    debug_embedding_all = debug['embedding_all']
+    debug_label_all = debug['label_all']
+    debug_im_path_all = debug['im_path_all'].tolist()
+    debug_cos_similarity = debug['cos_similarity']
 
     X_train, y_train = embedding_all, label_all[:, 0]
 
@@ -223,7 +223,6 @@ if __name__ == "__main__":
 
         # Selection Strategy 1: Choose Samples Close to the Center
         picked_num_iter = np.zeros((args.num_classes))
-        cos_thre = 0.97
         for i in range(args.num_classes):
             temp_num = 0
             try:
@@ -235,8 +234,8 @@ if __name__ == "__main__":
                     picked_label_kmeans[min_dist_idx] = y_train[min_dist_idx]
                     picked_num_kmeans[int(y_train[min_dist_idx])] += 1
                     picked_cos = cos_similarity[min_dist_idx, picked_label != -1]
-                    if iter == 0 or np.max(picked_cos) < cos_thre:
-                        picked_dick[name] = 1
+                    if iter == 0 or np.max(picked_cos) < args.cos_thre:
+                        picked_dick[name] = picked_dick[name] + 1 if name in picked_dick else 1
                         picked_label[min_dist_idx] = y_train[min_dist_idx]
                         picked_num[int(y_train[min_dist_idx])] += 1
                         picked_num_iter[int(y_train[min_dist_idx])] += 1
@@ -260,8 +259,8 @@ if __name__ == "__main__":
                     picked_label_kmeans[min_prob_idx] = y_train[min_prob_idx]
                     picked_num_kmeans[int(y_train[min_prob_idx])] += 1
                     picked_cos = cos_similarity[min_prob_idx, picked_label != -1]
-                    if iter == 0 or np.max(picked_cos) < cos_thre:
-                        picked_dick[name] = 1
+                    if iter == 0 or np.max(picked_cos) < args.cos_thre:
+                        picked_dick[name] = picked_dick[name] + 1 if name in picked_dick else 1
                         picked_label[min_prob_idx] = y_train[min_prob_idx]
                         picked_num[int(y_train[min_prob_idx])] += 1
                         picked_num_iter[int(y_train[min_prob_idx])] += 1

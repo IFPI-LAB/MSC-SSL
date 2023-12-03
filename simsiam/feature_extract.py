@@ -49,13 +49,14 @@ def get_embedding(args):
     model = gen_model(depth=50, num_classes=args.num_classes)
 
     # rename simsiam pre-trained keys
+    print('Load model form {} ...'.format(args.model_path))
     checkpoint = torch.load(args.model_path)  # load simsiam model
     state_dict = checkpoint['state_dict']
     for k in list(state_dict.keys()):
         # retain only encoder up to before the embedding layer
-        if k.startswith('module.encoder') and not k.startswith('module.encoder.fc'):
+        if k.startswith('module.') and not k.startswith('module.fc'):
             # remove prefix
-            state_dict[k[len("module.encoder."):]] = state_dict[k]
+            state_dict[k[len("module."):]] = state_dict[k]
         # delete renamed or unused k
         del state_dict[k]
     msg = model.load_state_dict(state_dict, strict=False)
@@ -70,6 +71,7 @@ def get_embedding(args):
                                          num_workers=0, pin_memory=True)
 
     # infer
+    print("start infer ...")
     with torch.no_grad():
         forward_fn = model.forward
         embedding_all = None
@@ -97,13 +99,35 @@ def get_embedding(args):
             except:
                 label_all = label
 
-    return embedding_all, label_all, im_path_all
+    cos_similarity = comput_cos_similarity(embedding_all)
+
+    return embedding_all, label_all, im_path_all, cos_similarity
+
+
+def comput_cos_similarity(embedding_all):
+    cos_similarity = np.zeros((embedding_all.shape[0], embedding_all.shape[0]))
+    for i in range(embedding_all.shape[0]):
+        emb_i = embedding_all[i]
+        for j in range(embedding_all.shape[0]):
+            emb_j = embedding_all[j]
+
+            cos = cos_sim(emb_i, emb_j)
+            cos_similarity[i, j] = cos
+    return cos_similarity
+
+
+def cos_sim(a, b):
+    a_norm = np.linalg.norm(a)
+    b_norm = np.linalg.norm(b)
+    cos = np.dot(a,b)/(a_norm * b_norm)
+    return cos
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
     # get embedding
-    embedding_all, label_all, im_path_all = get_embedding(args)
-    np.savez(os.path.join('embed', args.save_npz), embedding_all=embedding_all, label_all=label_all,
-             im_path_all=im_path_all)
+    embedding_all, label_all, im_path_all, cos_similarity = get_embedding(args)
+    np.savez(os.path.join(args.save_npz), embedding_all=embedding_all, label_all=label_all,
+             im_path_all=im_path_all, cos_similarity=cos_similarity)
+    print("Save feature to path {}".format(args.save_npz))

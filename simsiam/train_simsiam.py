@@ -340,8 +340,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
-            filename = os.path.join(args.save_path, 'model_best.pth.tar') if is_best else \
-                       os.path.join(args.save_path, 'checkpoint.pth.tar')
+            # filename = os.path.join(args.save_path, 'model_best.pth.tar') if is_best else \
+            #            os.path.join(args.save_path, 'checkpoint.pth.tar')
+            filename = os.path.join(args.save_path, 'checkpoint.pth.tar')
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
@@ -456,8 +457,8 @@ def validate(val_loader, model, criterion, args, log):
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
+    # if is_best:
+    #     shutil.copyfile(filename, 'model_best.pth.tar')
 
 
 def sanity_check(state_dict, pretrained_weights):

@@ -151,11 +151,6 @@ if __name__ == "__main__":
     label_all = data['label_all']
     im_path_all = data['im_path_all'].tolist()
     cos_similarity = data['cos_similarity']
-    debug = np.load(os.path.join('output/debug/bottom_simsiam_bottom_200e.npz'))
-    debug_embedding_all = debug['embedding_all']
-    debug_label_all = debug['label_all']
-    debug_im_path_all = debug['im_path_all'].tolist()
-    debug_cos_similarity = debug['cos_similarity']
 
     X_train, y_train = embedding_all, label_all[:, 0]
 

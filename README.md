@@ -50,7 +50,7 @@ This command runs the MSC-SSL model with the specified hyperparameters. You can 
 To train a self-supervised network based on [SimSiam](https://github.com/facebookresearch/simsiam) using the unlabeled image samples, you can run the following command to train from scratch:
 ```sh
 cd simsiam
-python train_simsiam.py --data your/data/path --save_path your/save/path --lars
+python train_simsiam.py --data_root your/data/path --save_path your/save/path --lars
 ```
 Or you can use the following command to train the network using a pre-trained checkpoint:
 ```sh
